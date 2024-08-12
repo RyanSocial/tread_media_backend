@@ -1,5 +1,6 @@
 import psycopg2
 from psycopg2 import sql
+import logging
 
 
 def get_connection():
@@ -12,6 +13,15 @@ def get_connection():
     )
 
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+
+logger = logging.getLogger(__name__)
+
+
 def get_event_types():
     with get_connection() as conn:
         with conn.cursor() as cur:
@@ -22,13 +32,18 @@ def get_event_types():
 
 
 def get_event_type(event_type_id: int):
-    with get_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT id, name FROM event_types WHERE id = %s;", (event_type_id,))
-            row = cur.fetchone()
-            if row:
-                return {"id": row[0], "name": row[1]}
-            return None
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id, name FROM event_types WHERE id = %s;", (event_type_id,))
+                row = cur.fetchone()
+                if row:
+                    return {"id": row[0], "name": row[1]}
+                return None
+    except psycopg2.Error as e:
+        # Log the error and raise an exception
+        logger.error(f"Database error occurred: {e}")
+        raise Exception("An error occurred while fetching the event type.")
 
 
 def create_event_type(name: str):

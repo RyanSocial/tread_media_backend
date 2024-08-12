@@ -1,11 +1,20 @@
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from app.crud.event_type import create_event_type, get_event_types, get_event_type, update_event_type, delete_event_type
+import logging
 
 app = FastAPI()
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8080)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+
+logger = logging.getLogger(__name__)
 
 
 @app.post("/event_types/")
@@ -14,9 +23,17 @@ def add_event_type(name: str):
     return [{"id": row[0], "name": row[1]} for row in rows]
 
 
-@app.get("/event_types/")
-def read_event_types():
-    return get_event_types()
+@app.get("/event_types/{event_type_id}")
+def read_event_type(event_type_id: int):
+    try:
+        event_type = get_event_type(event_type_id)
+        if event_type is None:
+            raise HTTPException(status_code=404, detail="EventType not found")
+        return event_type
+    except Exception as e:
+        # Log the error if needed
+        logger.error(f"Error in endpoint /event_types/{event_type_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @app.get("/event_types/{event_type_id}")
