@@ -1,34 +1,27 @@
-import psycopg2
-from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
+from typing import Generator
 import os
+from dotenv import load_dotenv
 
+# Load environment variables from .env file
 load_dotenv()
 
+# SQLAlchemy setup
+SQLALCHEMY_DATABASE_URL = f"postgresql://postgres:{os.getenv('PASSWORD')}@{os.getenv('HOST')}:{os.getenv('PORT')}/{os.getenv('DBNAME')}"
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-def get_connection():
+Base = declarative_base()
+
+
+def get_db() -> Generator[Session, None, None]:
+    db = SessionLocal()
     try:
-        conn = psycopg2.connect(
-            dbname=os.getenv("DBNAME"),
-            # TODO which is this using pc NAME?
-            user="postgres",
-            password=os.getenv("PASSWORD"),
-            host=os.getenv("HOST"),
-            port=os.getenv("PORT")
-        )
-        return conn
-    except Exception as e:
-        print(f"Error: {e}")
-        return None
+        yield db
+    finally:
+        db.close()
 
 
-def test_connection():
-    conn = get_connection()
-    if conn:
-        print("Connection successful")
-        conn.close()
-    else:
-        print("Connection failed")
-
-
-test_connection()
-
+get_db()

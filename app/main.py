@@ -1,7 +1,13 @@
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import logging
+
+from sqlalchemy.orm import Session
+
+from app.crud.users import get_user
+from app.db.connection import get_db
+from app.schemas.user_type import User
 
 app = FastAPI()
 
@@ -20,9 +26,6 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8080)
-
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -37,4 +40,13 @@ def read_root():
     return {"message": "tread media backend"}
 
 
+@app.get("/users/{user_id}", response_model=User)
+def read_user(user_id: int, db: Session = Depends(get_db)):
+    db_user = get_user(db, user_id)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return db_user
 
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8080)
