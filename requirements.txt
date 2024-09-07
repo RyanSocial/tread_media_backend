@@ -1,4 +1,6 @@
 psycopg2-binary
 pydantic
-uvicorn
-fastapi
+uvicorn~=0.30.5
+fastapi~=0.112.0
+python-dotenv~=1.0.1
+SQLAlchemy~=2.0.32
