@@ -1,27 +1,37 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
-from typing import Generator
+import psycopg2
+from dotenv import load_dotenv  # Import the load_dotenv function
 import os
-from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv()
 
-# SQLAlchemy setup
-SQLALCHEMY_DATABASE_URL = f"postgresql://postgres:{os.getenv('PASSWORD')}@{os.getenv('HOST')}:{os.getenv('PORT')}/{os.getenv('DBNAME')}"
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base = declarative_base()
+# Fetch the database configuration from environment variables or define them here
+DATABASE_URL = f"postgresql://postgres:{os.getenv('PASSWORD')}@{os.getenv('HOST')}:{os.getenv('PORT')}/{os.getenv('DBNAME')}"
 
 
-def get_db() -> Generator[Session, None, None]:
-    db = SessionLocal()
+def connect():
+    """Connect to the PostgreSQL database."""
     try:
-        yield db
-    finally:
-        db.close()
+        # Connect to the database
+        connection = psycopg2.connect(DATABASE_URL)
+        cursor = connection.cursor()
+
+        # Print the connection properties
+        print("Connected to the database!")
+
+        return connection, cursor
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None, None
 
 
-get_db()
+def close(connection, cursor):
+    """Close the database connection."""
+    if cursor:
+        cursor.close()
+    if connection:
+        connection.close()
+    print("Connection closed.")
+
+
+connect()

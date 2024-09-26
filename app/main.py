@@ -1,13 +1,9 @@
 import uvicorn
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import logging
-
-from sqlalchemy.orm import Session
-
-from app.crud.users import get_user
-from app.db.connection import get_db
-from app.schemas.user_type import User
+from app.db.connection import connect, close  # Your connection logic here
+from app.models.models import EventType  # Your EventType model
 
 app = FastAPI()
 
@@ -40,12 +36,27 @@ def read_root():
     return {"message": "tread media backend"}
 
 
-@app.get("/users/{user_id}", response_model=User)
-def read_user(user_id: int, db: Session = Depends(get_db)):
-    db_user = get_user(db, user_id)
-    if db_user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return db_user
+@app.get("/event-types/", response_model=list[EventType])
+def read_event_types():
+    """Get all event types."""
+    connection, cursor = connect()
+    try:
+        cursor.execute("SELECT * FROM event_types;")
+        event_types = cursor.fetchall()
+
+        if not event_types:
+            raise HTTPException(status_code=404, detail="No event types found.")
+
+        # Transform the result to match the EventType model
+        event_types_list = [EventType(id=et[0], name=et[1]) for et in event_types]
+        return event_types_list
+
+    except Exception as e:
+        logger.error(f"An error occurred while retrieving event types: {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal server error occurred.")
+
+    finally:
+        close(connection, cursor)  # Ensure the connection is closed
 
 
 if __name__ == "__main__":
