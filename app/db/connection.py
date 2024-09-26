@@ -1,30 +1,37 @@
 import psycopg2
+from dotenv import load_dotenv  # Import the load_dotenv function
+import os
+
+load_dotenv()
+
+# Fetch the database configuration from environment variables or define them here
+DATABASE_URL = f"postgresql://postgres:{os.getenv('PASSWORD')}@{os.getenv('HOST')}:{os.getenv('PORT')}/{os.getenv('DBNAME')}"
 
 
-def get_connection():
-    conn = psycopg2.connect(
-        dbname="postgres",
-        user="postgres",
-        password="mysecretpassword",
-        host="localhost",
-        port="5432"
-    )
-    return conn
-
-
-def test_connection():
+def connect():
+    """Connect to the PostgreSQL database."""
     try:
-        conn = psycopg2.connect(
-            dbname="postgres",
-            user="postgres",
-            password="mysecretpassword",
-            host="localhost",
-            port="5432"
-        )
-        print("Connection successful")
-        conn.close()
+        # Connect to the database
+        connection = psycopg2.connect(DATABASE_URL)
+        cursor = connection.cursor()
+
+        # Print the connection properties
+        print("Connected to the database!")
+
+        return connection, cursor
+
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"An error occurred: {e}")
+        return None, None
 
 
-test_connection()
+def close(connection, cursor):
+    """Close the database connection."""
+    if cursor:
+        cursor.close()
+    if connection:
+        connection.close()
+    print("Connection closed.")
+
+
+connect()

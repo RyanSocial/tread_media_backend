@@ -1,12 +1,26 @@
 import uvicorn
 from fastapi import FastAPI, HTTPException
-from app.crud.event_type import create_event_type, get_event_types, get_event_type, update_event_type, delete_event_type
+from fastapi.middleware.cors import CORSMiddleware
 import logging
+from app.db.connection import connect, close  # Your connection logic here
+from app.models.models import EventType  # Your EventType model
 
 app = FastAPI()
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+# Configure CORS
+origins = [
+    "http://localhost:4200",  # Frontend URL, adjust as needed
+    "http://127.0.0.1:4200",
+    "*",  # Allow all origins, use with caution
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # List of allowed origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all HTTP methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 # Configure logging
 logging.basicConfig(
@@ -17,44 +31,33 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-@app.post("/event_types/")
-def add_event_type(name: str):
-    event_type_id = create_event_type(name)
-    return [{"id": row[0], "name": row[1]} for row in rows]
+@app.get("/")
+def read_root():
+    return {"message": "tread media backend"}
 
 
-@app.get("/event_types/{event_type_id}")
-def read_event_type(event_type_id: int):
+@app.get("/event-types/", response_model=list[EventType])
+def read_event_types():
+    """Get all event types."""
+    connection, cursor = connect()
     try:
-        event_type = get_event_type(event_type_id)
-        if event_type is None:
-            raise HTTPException(status_code=404, detail="EventType not found")
-        return event_type
+        cursor.execute("SELECT * FROM event_types;")
+        event_types = cursor.fetchall()
+
+        if not event_types:
+            raise HTTPException(status_code=404, detail="No event types found.")
+
+        # Transform the result to match the EventType model
+        event_types_list = [EventType(id=et[0], name=et[1]) for et in event_types]
+        return event_types_list
+
     except Exception as e:
-        # Log the error if needed
-        logger.error(f"Error in endpoint /event_types/{event_type_id}: {e}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        logger.error(f"An error occurred while retrieving event types: {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal server error occurred.")
+
+    finally:
+        close(connection, cursor)  # Ensure the connection is closed
 
 
-@app.get("/event_types/{event_type_id}")
-def read_event_type(event_type_id: int):
-    event_type = get_event_type(event_type_id)
-    if event_type is None:
-        raise HTTPException(status_code=404, detail="EventType not found")
-    return event_type
-
-
-@app.put("/event_types/{event_type_id}")
-def modify_event_type(event_type_id: int, name: str):
-    success = update_event_type(event_type_id, name)
-    if not success:
-        raise HTTPException(status_code=404, detail="EventType not found")
-    return {"status": "updated"}
-
-
-@app.delete("/event_types/{event_type_id}")
-def remove_event_type(event_type_id: int):
-    success = delete_event_type(event_type_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="EventType not found")
-    return {"status": "deleted"}
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8080)
